@@ -29,7 +29,7 @@ This bash script automatically downloads a Certificate Revocation List (CRL) fro
 
 2. Make the script executable:
    ```bash
-   chmod +x update_crl.sh
+   chmod +x Server_DR.sh
    ```
 
 3. (Optional) Edit the configuration variables inside the script to match your environment:
