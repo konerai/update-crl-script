@@ -23,8 +23,8 @@ This bash script automatically downloads a Certificate Revocation List (CRL) fro
 
 1. Clone this repository (or download the script manually):
    ```bash
-   git clone https://github.com/your_username/update-crl-script.git
-   cd update-crl-script
+   git clone https://github.com/your_username/Server_DR.git
+   cd Server_DR
    ```
 
 2. Make the script executable:
@@ -38,7 +38,7 @@ This bash script automatically downloads a Certificate Revocation List (CRL) fro
    - `STORE_NAME` – CryptoPro store name (`mca` or `uca`).
    - `CERTMGR_CMD` – full path to the `certmgr` binary (default: `/opt/cprocsp/bin/amd64/certmgr`).
    - `NGINX_RELOAD_CMD` – command to reload Nginx (default: `systemctl reload nginx`).
-   - `LOG_FILE` – path to the log file (default: `/var/log/update_crl.log`).
+   - `LOG_FILE` – path to the log file (default: `/var/log/Server_DR.log`).
 
 ## Usage
 
@@ -46,12 +46,12 @@ This bash script automatically downloads a Certificate Revocation List (CRL) fro
 
 Run the script with root privileges:
 ```bash
-sudo ./update_crl.sh
+sudo ./Server_DR.sh
 ```
 
 Check the log output to confirm success:
 ```bash
-tail -f /var/log/update_crl.log
+tail -f /var/log/Server_DR.log
 ```
 
 ### Automated Execution via Cron
@@ -65,7 +65,7 @@ To run the script every 6 hours, add a cron job:
 
 2. Add the following line (adjust the path to your script):
    ```
-   0 */6 * * * /full/path/to/update_crl.sh
+   0 */6 * * * /full/path/to/Server_DR.sh
    ```
 
 3. Save and restart the cron daemon (if needed):
@@ -112,8 +112,8 @@ All actions and errors are written to the log file specified by `LOG_FILE`. Each
    If you get a list of certificates, the tool works.
 
 2. **Test the script manually**  
-   - Run it with `sudo ./update_crl.sh`.  
-   - Watch the log with `tail -f /var/log/update_crl.log` in another terminal.  
+   - Run it with `sudo ./Server_DR.sh`.  
+   - Watch the log with `tail -f /var/log/Server_DR.log` in another terminal.  
    - If something fails, check:
      - Network connectivity to the CRL URL.
      - Write permissions to `CRL_PATH` (usually `/tmp` is writable).
