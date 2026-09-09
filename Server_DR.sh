@@ -1,69 +1,94 @@
 #!/bin/bash
 
-#---- Settings ----#
+# ============================================================
+# Settings
+# ============================================================
 
-CRL_URL=(  
-          "http://example1"                     # URL CRL
-          "http://example1"
-          "http://example1"
-          "http://example1"                     
+# Array of CRL distribution point URLs to download
+CRL_URL=(
+    "http://example1"                     # CRL URL #1
+    "http://example2"                     # CRL URL #2
+    "http://example3"                     # CRL URL #3
+    "http://example4"                     # CRL URL #4
+)
 
-)                     
-CRL_PATH="/tmp/crl.der"                         # tmp file
-STORE_NAME="mca"                                # srotage CryptoPro (mca/uca)
-CERTMGR_CMD="/opt/cprocsp/bin/amd64/certmgr"    # path to certmgr (usually /opt/cprocsp/bin/amd64/certmgr or /opt/cprocsp/bin/i386/certmgr)
-NGINX_RELOAD_CMD="systemctl reload nginx"       # or /etc/init.d/nginx reload 
-LOG_FILE="/var/log/update_crl.log"              # logfile/change directory if you want
-                                                # not critical
-#---- Settings ----#
+# Temporary directory for storing downloaded CRL files
+CRL_TMP_DIR="/tmp/crl_temp"
 
+# CryptoPro certificate storage name (mca or uca)
+STORE_NAME="mca"
+
+# Path to CryptoPro certmgr utility
+CERTMGR_CMD="/opt/cprocsp/bin/amd64/certmgr"
+
+# Log file path
+LOG_FILE="/var/log/update_crl.log"
+
+# ============================================================
+# Functions
+# ============================================================
+
+# Logging function: writes timestamped messages to log file
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
 }
 
-log "=== Update CRL ==="
+# ============================================================
+# Main execution
+# ============================================================
 
-rm -f "$CRL_PATH"
-log "Old temporary file removed"
+# Create temporary directory if it doesn't exist
+mkdir -p "$CRL_TMP_DIR"
 
-# 1. Download CRL
-log "Loading from CRL $CRL_URL ..."
-if ! wget -q --timeout=30 --tries=3 -O "$CRL_PATH" "$CRL_URL"; then
-    log "ERROR: failed to load CRL"
-    exit 1
-fi
+# Start logging
+log "=== Update CRL started ==="
 
-# 2. check NULL 
-if [ ! -s "$CRL_PATH" ]; then
-    log "ERROR: downloaded file is empty"
-    exit 1
-fi
+# Initialize error counter
+ERRORS=0
 
-# 3. Import CryptoPro
-log "Import in store CRL '$STORE_NAME'..."
-if ! $CERTMGR_CMD -inst -store "$STORE_NAME" -file "$CRL_PATH" -crl >> "$LOG_FILE" 2>&1; then
-    log "ERROR: failed import CRL in CryptoPro"
-    exit 1
-fi
+# Process each CRL URL from the array
+for URL in "${CRL_URL[@]}"; do
+    # Generate unique filename based on URL hash (first 8 chars of MD5)
+    TMP_FILE="$CRL_TMP_DIR/crl_$(echo "$URL" | md5sum | cut -c1-8).der"
+    
+    log "Downloading CRL from $URL ..."
+    
+    # Download CRL with timeout and retry limits
+    if ! wget -q --timeout=30 --tries=3 -O "$TMP_FILE" "$URL"; then
+        log "ERROR: failed to download CRL from $URL"
+        ERRORS=$((ERRORS + 1))
+        continue
+    fi
 
-# 4. Clear tmp file
-rm -f "$CRL_PATH"
-log "Import CRL"
+    # Check if downloaded file is not empty
+    if [ ! -s "$TMP_FILE" ]; then
+        log "ERROR: downloaded CRL from $URL is empty"
+        ERRORS=$((ERRORS + 1))
+        rm -f "$TMP_FILE"
+        continue
+    fi
 
-# 5. Reload nginx
-log "Reload nginx..."
-if $NGINX_RELOAD_CMD; then
-    log "nginx reloas succsesfully"
+    # Import CRL into CryptoPro certificate store
+    log "Importing CRL from $URL into store '$STORE_NAME'..."
+    if ! $CERTMGR_CMD -inst -store "$STORE_NAME" -file "$TMP_FILE" -crl >> "$LOG_FILE" 2>&1; then
+        log "ERROR: failed to import CRL from $URL"
+        ERRORS=$((ERRORS + 1))
+    else
+        log "Successfully imported CRL from $URL"
+    fi
+
+    # Clean up temporary file after processing
+    rm -f "$TMP_FILE"
+done
+
+# Remove temporary directory and all remaining files
+rm -rf "$CRL_TMP_DIR"
+
+# Report final status
+if [ $ERRORS -eq 0 ]; then
+    log "=== All CRL updated successfully ==="
+    exit 0
 else
-    log "ERORR: faild reload nginx"
+    log "=== Update completed with $ERRORS error(s) ==="
     exit 1
 fi
-
-log "=== Update CRL done ==="
-
-#---------------------------------------------------------------------------------#
-
-                            #    Guide for daemon cron     #
-                            #       sudo crontabe -e       #
-                            #   0*/6*** /path/to/file.sh   #
-                            #  sudo systemctl restart cron #
