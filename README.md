@@ -19,6 +19,7 @@ This Bash script automatically downloads and imports Certificate Revocation List
 
 ## Installation
 
-1. **Clone or download** this script to your server:
+1. **Clone this repository** to your server:
    ```bash
-   sudo wget -O /usr/local/bin/update_crl.sh https://your-repo/update_crl.sh
+   git clone https://github.com/your_username/Server_DR.git
+   cd Server_DR
